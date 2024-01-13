@@ -1,54 +1,7 @@
 const fs = require('fs-extra');
 const path = require('path');
-const ncp = require('ncp').ncp;
-const fse = require('fs-extra');
-
 
 const controller = {
-  createFile : (fileName) => {
-    try {
-      // Check if the file already exists
-      if (fs.existsSync(fileName)) {
-        console.log(`File "${fileName}" already exists.`);
-      } else {
-        // If the file doesn't exist, create it
-        fs.writeFileSync(fileName, '');
-        console.log(`File "${fileName}" created successfully.`);
-      }
-    } catch (error) {
-      console.error(`Error creating or checking file "${fileName}": ${error.message}`);
-    }
-  },
-
-   moveFile : (selectedFilePath, destinationPath, replaceIfExists = true) => {
-
-    try {
-      const fileName = path.basename(selectedFilePath);
-      const destinationFilePath = path.join(destinationPath, fileName);
-  
-      // Check if the file already exists at the destination
-      const fileExistsAtDestination = fs.existsSync(destinationFilePath);
-  
-      if (fileExistsAtDestination && replaceIfExists) {
-        // If the file exists and replaceIfExists is true, delete the existing file
-        fs.unlinkSync(destinationFilePath);
-        console.log(`Existing file "${fileName}" at destination deleted.`);
-      } else if (fileExistsAtDestination && !replaceIfExists) {
-        // If the file exists and replaceIfExists is false, return a message and exit
-        console.log(`File "${fileName}" already exists at destination. Not replaced.`);
-        return `File "${fileName}" already exists at destination. Not replaced.`;
-      }
-  
-      // Move the file to the destination
-      fs.renameSync(selectedFilePath, destinationFilePath);
-      console.log(`File "${fileName}" moved to "${destinationPath}" successfully.`);
-  
-      return `File "${fileName}" moved to "${destinationPath}" successfully.`;
-    } catch (error) {
-      console.error(`Error moving file: ${error.message}`);
-      return `Error moving file: ${error.message}`;
-    }
-  },
   moveDirectory: (sourcePath, destinationPath) => {
     try {
       // Check if the source directory exists
@@ -112,52 +65,20 @@ const controller = {
     }
   },
 
-  copyFile: (newPath, sourcePath, overwrite = false) => {
+  copy: (newPath, sourcePath) => {
     try {
-      if (!fse.existsSync(sourcePath)) {
-        console.error(`Source file/directory '${sourcePath}' does not exist.`);
-        return;
+      if (fs.existsSync(newPath)) {
+        fs.unlinkSync(newPath);
       }
-  
-      if (fse.existsSync(newPath)) {
-        // If the destination file/directory already exists
-        if (overwrite) {
-          // If overwriting is allowed, remove the existing file/directory
-          fse.removeSync(newPath);
-          console.log(`File/directory ${newPath} removed.`);
-        } else {
-          // If overwriting is not allowed, print a message and return
-          console.log(`File/directory ${newPath} already exists. Skipped.`);
-          return;
-        }
-      }
-  
-      const sourceStats = fse.statSync(sourcePath);
-  
-      // Check if the destination path is a directory
-      const isDestinationDirectory = fse.statSync(newPath).isDirectory();
-  
-      if (isDestinationDirectory) {
-        // If the destination is a directory, construct the full destination path
-        const fileName = path.basename(sourcePath);
-        newPath = path.join(newPath, fileName);
-      }
-  
-      if (sourceStats.isDirectory()) {
-        // If the source is a directory, use fs-extra to copy its contents
-        fse.copySync(sourcePath, newPath);
-        console.log(`Directory ${sourcePath} copied to ${newPath}`);
-      } else {
-        // If the source is a file, use fs-extra to copy it
-        fse.copyFileSync(sourcePath, newPath);
-        console.log(`File ${sourcePath} copied to ${newPath}`);
-      }
+
+      fs.copyFileSync(sourcePath, newPath);
+      console.log(`File ${sourcePath} copied to ${newPath}`);
     } catch (error) {
-      console.error(`Error copying file/directory: ${error.message}`);
+      console.error(`Error copying file: ${error.message}`);
     }
   },
 
-  editFile: (filePath, newContentPath) => {
+  edit: (filePath, newContentPath) => {
     try {
       const oldContent = fs.readFileSync(filePath, 'utf-8');
       const newContent = fs.readFileSync(newContentPath, 'utf-8').split('\n');
@@ -178,7 +99,7 @@ const controller = {
     }
   },
 
-  deleteFile: (filePath) => {
+  delete: (filePath) => {
     try {
       fs.unlinkSync(filePath);
       console.log(`File ${filePath} deleted`);
@@ -187,57 +108,19 @@ const controller = {
     }
   },
 
-  progress :(operations) => {
-    const totalSteps = operations.length * 100; // Assuming each operation contributes 100 steps
-  
-    return new Promise(async (resolve) => {
-      let currentStep = 0;
-  
-      // Function to update the progress and check completion
-      function updateProgress() {
-        const progress = Math.floor((currentStep / totalSteps) * 100);
-        console.log(`Progress: ${progress}%`);
-  
-        if (currentStep === totalSteps) {
-          resolve();
-        }
-      }
-  
-      // Execute each operation asynchronously
-      for (const operation of operations) {
-        try {
-          // Assuming each operation returns a promise
-          await operation();
-          currentStep += 100;
-          updateProgress();
-        } catch (error) {
-          console.error(`Error in operation: ${error.message}`);
-          // Handle errors if needed
-        }
-      }
-    }).then(() => {
-      console.log("All operations completed successfully!");
-    })
-    .catch((error) => {
-      console.error(`Error in progress bar: ${error.message}`);
-    });;
-  },
   run: (scriptPath) => {
     const { spawn } = require('child_process');
     const process = spawn('node', [scriptPath]);
-  
-    let scriptOutput = ''; // Store the script output
-  
+
     process.stdout.on('data', (data) => {
-      scriptOutput += data.toString(); // Concatenate the output chunks
+      console.log(`Script output: ${data}`);
     });
-  
+
     process.stderr.on('data', (data) => {
       console.error(`Script error: ${data}`);
     });
-  
+
     process.on('close', (code) => {
-      console.log(`Script output: ${scriptOutput}`);
       console.log(`Script exited with code ${code}`);
     });
   },

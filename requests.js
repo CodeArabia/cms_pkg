@@ -17,6 +17,7 @@ async function getData(url) {
   try {
     const response = await axios.get(url);
     console.log('GET Request:', response.data);
+    return response.data
   } catch (error) {
     handleRequestError(error, 'GET');
   }
